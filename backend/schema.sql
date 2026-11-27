@@ -17,7 +17,9 @@ CREATE TABLE tasks (
 );
 CREATE TABLE comments (
     id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL REFERENCES tasks(id),
-    user_id INTEGER NOT NULL REFERENCES users(id), body TEXT NOT NULL, created_at TEXT NOT NULL
+    user_id INTEGER NOT NULL REFERENCES users(id), body TEXT NOT NULL, created_at TEXT NOT NULL,
+    attention TEXT NOT NULL DEFAULT 'none' CHECK (attention IN ('none', 'requested', 'resolved'))
 );
 CREATE INDEX tasks_project ON tasks(project_id);
 CREATE INDEX comments_task ON comments(task_id, id);
+CREATE INDEX comments_pending_attention ON comments(task_id) WHERE attention = 'requested';

@@ -1,6 +1,14 @@
 <?php
 declare(strict_types=1);
 
+namespace ProjectDesk;
+
+use DateTimeImmutable;
+use DateTimeZone;
+use PDO;
+use RuntimeException;
+use Throwable;
+
 final class Database
 {
     public static function connect(): PDO
@@ -20,21 +28,54 @@ final class Database
 
     private static function initialize(PDO $db): void
     {
-        // Lock before checking: two first requests must not create two datasets.
+        if (self::schemaVersion($db) === '2') {
+            return;
+        }
+
         $db->exec('BEGIN IMMEDIATE');
         try {
-            $db->exec('CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
-            if ($db->query("SELECT value FROM metadata WHERE key = 'schema_version'")->fetchColumn()) {
-                $db->exec('COMMIT');
-                return;
+            $version = self::schemaVersion($db);
+            if ($version === null) {
+                $db->exec('CREATE TABLE metadata (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+                self::executeSqlFile($db, __DIR__ . '/../schema.sql');
+                self::seed($db);
+            } elseif ($version === '1') {
+                self::executeSqlFile($db, __DIR__ . '/../migrations/002-comment-attention.sql');
+                $db->exec("UPDATE metadata SET value = '2' WHERE key = 'schema_version'");
+            } elseif ($version !== '2') {
+                throw new RuntimeException('Unsupported SQLite schema version.');
             }
-            $db->exec(file_get_contents(__DIR__ . '/../schema.sql'));
-            self::seed($db);
             $db->exec('COMMIT');
         } catch (Throwable $error) {
             $db->exec('ROLLBACK');
             throw $error;
         }
+    }
+
+    private static function schemaVersion(PDO $db): ?string
+    {
+        $metadata = $db->query("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'metadata'");
+        if ($metadata === false || $metadata->fetchColumn() === false) {
+            return null;
+        }
+
+        $statement = $db->query("SELECT value FROM metadata WHERE key = 'schema_version'");
+        $version = $statement === false ? false : $statement->fetchColumn();
+        if (!is_string($version)) {
+            throw new RuntimeException('Missing SQLite schema version.');
+        }
+
+        return $version;
+    }
+
+    private static function executeSqlFile(PDO $db, string $path): void
+    {
+        $sql = file_get_contents($path);
+        if ($sql === false) {
+            throw new RuntimeException('Cannot read SQL schema file.');
+        }
+
+        $db->exec($sql);
     }
 
     private static function seed(PDO $db): void
@@ -73,7 +114,16 @@ final class Database
             $row[7] = $stamp($row[7]);
             $task->execute($row);
         }
-        $comment = $db->prepare('INSERT INTO comments (task_id, user_id, body, created_at) VALUES (?, ?, ?, ?)');
+        $comment = $db->prepare(<<<'SQL'
+            INSERT INTO comments (task_id, user_id, body, created_at, attention)
+            VALUES (
+                :task_id, :user_id, :body, :created_at,
+                CASE (SELECT status FROM tasks WHERE id = :task_id)
+                    WHEN 'blocked' THEN 'requested'
+                    ELSE 'none'
+                END
+            )
+            SQL);
         foreach ([
             [1, 2, 'Есть два варианта формата. Нужна помощь руководителя с выбором.', '-1 day'],
             [1, 3, 'Клиент может прислать пример завтра утром.', '-4 hours'],
@@ -83,12 +133,16 @@ final class Database
             [7, 2, 'Не можем продолжить без владельца справочника. Анна, помоги определить ответственного между командами.', '-2 days'],
             [8, 3, 'Макет согласован, препятствий нет.', '-1 hour'],
             [10, 2, 'Сохраняем историю, проект уже закрыт.', '-29 days'],
-        ] as $row) {
-            $row[3] = $stamp($row[3]);
-            $comment->execute($row);
+        ] as [$taskId, $userId, $body, $offset]) {
+            $comment->execute([
+                'task_id' => $taskId,
+                'user_id' => $userId,
+                'body' => $body,
+                'created_at' => $stamp($offset),
+            ]);
         }
         $meta = $db->prepare('INSERT INTO metadata VALUES (?, ?)');
-        $meta->execute(['schema_version', '1']);
+        $meta->execute(['schema_version', '2']);
         $meta->execute(['seeded_at', $stamp('+0 seconds')]);
     }
 }

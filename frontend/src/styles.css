@@ -479,3 +479,20 @@ fieldset {
     flex-wrap:wrap;
   }
 }
+
+.attention-section {
+  margin-top:20px;
+}
+.attention-reasons {
+  display:flex;
+  flex-wrap:wrap;
+  gap:6px;
+}
+.detail .attention-checkbox {
+  display:flex;
+  flex-direction:row;
+  align-items:center;
+}
+.detail .attention-checkbox input {
+  width:auto;
+}

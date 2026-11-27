@@ -1,0 +1,67 @@
+<div class="drawer-heading">
+  <span>{{detail() ? 'Задача #' + detail()?.id : 'Новая задача'}}</span>
+  <button type="button" aria-label="Закрыть карточку" (click)="closeCard.emit()">✕</button>
+</div>
+<form (ngSubmit)="save.emit()">
+  <fieldset [disabled]="project().archived || saving()">
+    <label>Название<input name="title" [(ngModel)]="draft().title" required maxlength="200"></label>
+    <label>Описание<textarea name="description" [(ngModel)]="draft().description" rows="4" maxlength="5000"></textarea></label>
+    <div class="form-row">
+      <label>Статус
+        @if (detail()) {
+          <select name="status" [(ngModel)]="draft().status">
+            @for (status of statuses(); track status.value) {
+              <option [value]="status.value">{{status.label}}</option>
+            }
+          </select>
+        } @else {
+          <span>Открыта</span>
+        }
+      </label>
+      <label>Исполнитель
+        <select name="assignee" [(ngModel)]="draft().assignee_id">
+          <option [ngValue]="null">Не назначен</option>
+          @for (user of project().members; track user.id) {
+            <option [ngValue]="user.id">{{user.name}}</option>
+          }
+        </select>
+      </label>
+    </div>
+    <label>Срок (UTC)<input type="datetime-local" name="due" [(ngModel)]="draft().due_at"></label>
+    @if (!project().archived) {
+      <button type="submit" class="primary" [disabled]="!draft().title.trim()">Сохранить задачу</button>
+    }
+  </fieldset>
+</form>
+@if (detail(); as task) {
+  <section class="comments">
+    <h2>Обсуждение <span>{{task.comments.length}}</span></h2>
+    @for (item of task.comments; track item.id) {
+      <article>
+        <strong>{{item.author}}</strong>
+        <time>{{item.created_at | date:'dd.MM.yyyy HH:mm':'UTC'}}</time>
+        <p>{{item.body}}</p>
+        @if (item.attention === 'requested') {
+          <span class="badge blocked">Требует внимания руководителя</span>
+          @if (canResolve()) {
+            <button type="button" [disabled]="saving()" (click)="resolveComment.emit(item.id)">Отметить обработанным</button>
+          }
+        } @else if (item.attention === 'resolved') {
+          <span class="badge done">Отметка обработана</span>
+        }
+      </article>
+    } @empty {
+      <p class="muted">Комментариев пока нет.</p>
+    }
+    @if (!project().archived) {
+      <form (ngSubmit)="sendComment.emit()">
+        <label>Комментарий<textarea name="comment" [(ngModel)]="comment" rows="3" required maxlength="2000" [disabled]="saving()"></textarea></label>
+        <label class="attention-checkbox">
+          <input type="checkbox" name="requiresAttention" [(ngModel)]="requiresAttention" [disabled]="saving()">
+          Требует внимания руководителя
+        </label>
+        <button type="submit" [disabled]="!comment().trim() || saving()">Добавить комментарий</button>
+      </form>
+    }
+  </section>
+}

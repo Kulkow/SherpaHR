@@ -11,5 +11,16 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+  php-check:
+    profiles: [checks]
+    build:
+      context: .
+      target: php-check
+  frontend-check:
+    profiles: [checks]
+    build:
+      context: .
+      target: frontend-check
+    command: ["npm", "run", "check"]
 volumes:
   project_data:
