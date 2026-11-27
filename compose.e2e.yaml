@@ -1,0 +1,29 @@
+services:
+  app:
+    build:
+      context: .
+      target: app
+    environment:
+      DB_PATH: /app/var/e2e.sqlite
+      SEED_NOW: "2026-11-11T08:00:00Z"
+    volumes:
+      - test_data:/app/var
+    healthcheck:
+      test: ["CMD", "php", "-r", "exit((json_decode(@file_get_contents('http://127.0.0.1:8080/api/health') ?: '', true)['data']['status'] ?? '') === 'ok' ? 0 : 1);"]
+      interval: 2s
+      timeout: 3s
+      retries: 10
+  e2e:
+    build:
+      context: .
+      target: e2e
+    network_mode: service:app
+    environment:
+      PLAYWRIGHT_BASE_URL: http://127.0.0.1:8080
+    volumes:
+      - ./frontend/test-results:/tests/test-results
+    depends_on:
+      app:
+        condition: service_healthy
+volumes:
+  test_data:

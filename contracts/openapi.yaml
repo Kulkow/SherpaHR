@@ -1,0 +1,88 @@
+openapi: 3.1.0
+info:
+  title: Project Desk API
+  version: 7.0.0
+paths:
+  /api/health:
+    get:
+      operationId: "health"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"type": "object", "properties": {"status": {"type": "string", "const": "ok"}}, "required": ["status"]}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+  /api/context:
+    get:
+      operationId: "context"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"$ref": "#/components/schemas/Context"}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+    parameters:
+      - {"$ref": "#/components/parameters/DemoUser"}
+  /api/projects:
+    get:
+      operationId: "listProjects"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Project"}}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+    parameters:
+      - {"$ref": "#/components/parameters/DemoUser"}
+  /api/attention:
+    get:
+      operationId: "attentionOverview"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/AttentionItem"}}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+    parameters:
+      - {"$ref": "#/components/parameters/DemoUser"}
+  /api/projects/{projectId}/tasks:
+    parameters:
+      - {"in": "path", "name": "projectId", "required": true, "schema": {"type": "integer", "minimum": 1}}
+      - {"$ref": "#/components/parameters/DemoUser"}
+    get:
+      operationId: "listTasks"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"type": "array", "items": {"$ref": "#/components/schemas/Task"}}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+    post:
+      operationId: "createTask"
+      responses: {"201": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"$ref": "#/components/schemas/EditableTask"}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateTask"}}}}
+  /api/tasks/{taskId}:
+    parameters:
+      - {"in": "path", "name": "taskId", "required": true, "schema": {"type": "integer", "minimum": 1}}
+      - {"$ref": "#/components/parameters/DemoUser"}
+    get:
+      operationId: "taskDetail"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"$ref": "#/components/schemas/TaskDetail"}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+    patch:
+      operationId: "updateTask"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"$ref": "#/components/schemas/EditableTask"}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/UpdateTask"}}}}
+  /api/tasks/{taskId}/comments:
+    parameters:
+      - {"in": "path", "name": "taskId", "required": true, "schema": {"type": "integer", "minimum": 1}}
+      - {"$ref": "#/components/parameters/DemoUser"}
+    post:
+      operationId: "addComment"
+      responses: {"201": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"$ref": "#/components/schemas/Comment"}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+      requestBody: {"required": true, "content": {"application/json": {"schema": {"$ref": "#/components/schemas/CreateComment"}}}}
+  /api/tasks/{taskId}/comments/{commentId}/resolve:
+    parameters:
+      - {"in": "path", "name": "taskId", "required": true, "schema": {"type": "integer", "minimum": 1}}
+      - {"in": "path", "name": "commentId", "required": true, "schema": {"type": "integer", "minimum": 1}}
+      - {"$ref": "#/components/parameters/DemoUser"}
+    post:
+      operationId: "resolveCommentAttention"
+      responses: {"200": {"description": "Успех", "content": {"application/json": {"schema": {"type": "object", "properties": {"data": {"$ref": "#/components/schemas/ResolvedComment"}}, "required": ["data"]}}}}, "default": {"$ref": "#/components/responses/Error"}}
+components:
+  parameters:
+    DemoUser: {"in": "header", "name": "X-Demo-User", "schema": {"type": "integer", "default": 1}, "description": "Выбор пользователя локального демо"}
+  schemas:
+    User: {"type": "object", "properties": {"id": {"type": "integer"}, "name": {"type": "string"}}, "required": ["id", "name"]}
+    Context: {"type": "object", "properties": {"user": {"$ref": "#/components/schemas/User"}, "users": {"type": "array", "items": {"$ref": "#/components/schemas/User"}}, "server_now": {"type": "string", "format": "date-time"}, "seeded_at": {"type": "string", "format": "date-time"}}, "required": ["user", "users", "server_now", "seeded_at"]}
+    Project: {"type": "object", "properties": {"id": {"type": "integer"}, "name": {"type": "string"}, "description": {"type": "string"}, "archived": {"type": "boolean"}, "owner_id": {"type": "integer"}, "task_count": {"type": "integer"}, "members": {"type": "array", "items": {"$ref": "#/components/schemas/User"}}}, "required": ["id", "name", "description", "archived", "owner_id", "task_count", "members"]}
+    TaskStatus: {"type": "string", "enum": ["open", "in_progress", "blocked", "done"]}
+    TaskFields: {"type": "object", "properties": {"title": {"type": "string"}, "description": {"type": "string"}, "status": {"$ref": "#/components/schemas/TaskStatus"}, "assignee_id": {"anyOf": [{"type": "integer"}, {"type": "null"}]}, "due_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}}, "required": ["title", "description", "status", "assignee_id", "due_at"]}
+    CreateTask: {"type": "object", "properties": {"title": {"type": "string"}, "description": {"type": "string"}, "status": {"type": "string", "const": "open", "default": "open"}, "assignee_id": {"anyOf": [{"type": "integer"}, {"type": "null"}]}, "due_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}}, "required": ["title"]}
+    UpdateTask: {"type": "object", "properties": {"title": {"type": "string"}, "description": {"type": "string"}, "status": {"$ref": "#/components/schemas/TaskStatus"}, "assignee_id": {"anyOf": [{"type": "integer"}, {"type": "null"}]}, "due_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}, "version": {"type": "integer", "minimum": 1}}, "required": ["version"]}
+    Task: {"allOf": [{"$ref": "#/components/schemas/TaskFields"}, {"type": "object", "properties": {"id": {"type": "integer"}, "project_id": {"type": "integer"}, "updated_at": {"type": "string", "format": "date-time"}, "version": {"type": "integer"}}, "required": ["id", "project_id", "updated_at", "version"]}]}
+    EditableTask: {"allOf": [{"$ref": "#/components/schemas/Task"}, {"type": "object", "properties": {"allowed_statuses": {"type": "array", "items": {"$ref": "#/components/schemas/TaskStatus"}}}, "required": ["allowed_statuses"]}]}
+    TaskDetail: {"allOf": [{"$ref": "#/components/schemas/EditableTask"}, {"type": "object", "properties": {"comments": {"type": "array", "items": {"$ref": "#/components/schemas/Comment"}}}, "required": ["comments"]}]}
+    CommentAttention: {"type": "string", "enum": ["none", "requested", "resolved"]}
+    Comment: {"type": "object", "properties": {"id": {"type": "integer"}, "task_id": {"type": "integer"}, "user_id": {"type": "integer"}, "body": {"type": "string"}, "created_at": {"type": "string", "format": "date-time"}, "author": {"type": "string"}, "attention": {"$ref": "#/components/schemas/CommentAttention"}}, "required": ["id", "task_id", "user_id", "body", "created_at", "author", "attention"]}
+    CreateComment: {"type": "object", "properties": {"body": {"type": "string"}, "requires_attention": {"type": "boolean", "default": false}}, "required": ["body"]}
+    ResolvedComment: {"type": "object", "properties": {"attention": {"type": "string", "const": "resolved"}}, "required": ["attention"]}
+    AttentionReason: {"type": "string", "enum": ["comment_attention", "blocked", "overdue", "unassigned"]}
+    AttentionItem: {"type": "object", "properties": {"id": {"type": "integer"}, "project_id": {"type": "integer"}, "project_name": {"type": "string"}, "title": {"type": "string"}, "status": {"$ref": "#/components/schemas/TaskStatus"}, "assignee_id": {"anyOf": [{"type": "integer"}, {"type": "null"}]}, "due_at": {"anyOf": [{"type": "string", "format": "date-time"}, {"type": "null"}]}, "reasons": {"type": "array", "items": {"$ref": "#/components/schemas/AttentionReason"}}}, "required": ["id", "project_id", "project_name", "title", "status", "assignee_id", "due_at", "reasons"]}
+    Error: {"type": "object", "properties": {"error": {"type": "string"}}, "required": ["error"]}
+  responses:
+    Error: {"description": "Ошибка запроса или приложения", "content": {"application/json": {"schema": {"$ref": "#/components/schemas/Error"}}}}

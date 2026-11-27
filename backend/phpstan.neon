@@ -1,0 +1,11 @@
+includes:
+    - phpstan-baseline.neon
+
+
+parameters:
+    level: 9
+    phpVersion: 80400
+    paths:
+        - src
+        - tests
+        - router.php

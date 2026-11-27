@@ -27,6 +27,11 @@
 !/.github/pull_request_template.md
 
 # CANDIDATE SOLUTION: in your own fork, add the paths of your solution here.
+!/contracts/
+!/contracts/openapi.yaml
+!/compose.e2e.yaml
+!/.githooks/
+!/.githooks/pre-commit
 
 # Keep these exclusions AFTER candidate additions.
 **/.git/
@@ -36,6 +41,8 @@
 **/.venv/
 **/dist/
 **/coverage/
+**/test-results/
+**/playwright-report/
 **/.angular/
 **/var/
 **/.env
